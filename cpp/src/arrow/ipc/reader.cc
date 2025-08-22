@@ -1162,11 +1162,9 @@ Result<std::shared_ptr<RecordBatchStreamReader>> RecordBatchStreamReader::Open(
 // ----------------------------------------------------------------------
 // Reader implementation
 
-namespace {
-
 // Common functions used in both the random-access file reader and the
 // asynchronous generator
-inline FileBlock FileBlockFromFlatbuffer(const flatbuf::Block* block) {
+static inline FileBlock FileBlockFromFlatbuffer(const flatbuf::Block* block) {
   return FileBlock{block->offset(), block->metaDataLength(), block->bodyLength()};
 }
 
@@ -1179,7 +1177,7 @@ Status CheckAligned(const FileBlock& block) {
   return Status::OK();
 }
 
-Result<std::unique_ptr<Message>> ReadMessageFromBlock(
+static Result<std::unique_ptr<Message>> ReadMessageFromBlock(
     const FileBlock& block, io::RandomAccessFile* file,
     const FieldsLoaderFunction& fields_loader) {
   RETURN_NOT_OK(CheckAligned(block));
@@ -1191,7 +1189,7 @@ Result<std::unique_ptr<Message>> ReadMessageFromBlock(
   return message;
 }
 
-Future<std::shared_ptr<Message>> ReadMessageFromBlockAsync(
+static Future<std::shared_ptr<Message>> ReadMessageFromBlockAsync(
     const FileBlock& block, io::RandomAccessFile* file, const io::IOContext& io_context) {
   if (!bit_util::IsMultipleOf8(block.offset) ||
       !bit_util::IsMultipleOf8(block.metadata_length) ||
@@ -1211,7 +1209,7 @@ class RecordBatchFileReaderImpl;
 /// A generator of record batches.
 ///
 /// All batches are yielded in order.
-class WholeIpcFileRecordBatchGenerator {
+class ARROW_EXPORT WholeIpcFileRecordBatchGenerator {
  public:
   using Item = std::shared_ptr<RecordBatch>;
 
@@ -1248,7 +1246,7 @@ class WholeIpcFileRecordBatchGenerator {
 /// a subset of columns from the file.
 ///
 /// All batches are yielded in order.
-class SelectiveIpcFileRecordBatchGenerator {
+class ARROW_EXPORT SelectiveIpcFileRecordBatchGenerator {
  public:
   using Item = std::shared_ptr<RecordBatch>;
 
@@ -1890,6 +1888,75 @@ class RecordBatchFileReaderImpl : public RecordBatchFileReader {
   bool swap_endian_;
 };
 
+Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
+    io::RandomAccessFile* file, const IpcReadOptions& options) {
+  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
+  return Open(file, footer_offset, options);
+}
+
+Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
+    io::RandomAccessFile* file, int64_t footer_offset, const IpcReadOptions& options) {
+  auto result = std::make_shared<RecordBatchFileReaderImpl>();
+  RETURN_NOT_OK(result->Open(file, footer_offset, options));
+  return result;
+}
+
+Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
+    const std::shared_ptr<io::RandomAccessFile>& file, const IpcReadOptions& options) {
+  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
+  return Open(file, footer_offset, options);
+}
+
+Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
+    const std::shared_ptr<io::RandomAccessFile>& file, int64_t footer_offset,
+    const IpcReadOptions& options) {
+  auto result = std::make_shared<RecordBatchFileReaderImpl>();
+  RETURN_NOT_OK(result->Open(file, footer_offset, options));
+  return result;
+}
+
+Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
+    const std::shared_ptr<io::RandomAccessFile>& file, const IpcReadOptions& options) {
+  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
+  return OpenAsync(file, footer_offset, options);
+}
+
+Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
+    io::RandomAccessFile* file, const IpcReadOptions& options) {
+  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
+  return OpenAsync(file, footer_offset, options);
+}
+
+Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
+    const std::shared_ptr<io::RandomAccessFile>& file, int64_t footer_offset,
+    const IpcReadOptions& options) {
+  auto result = std::make_shared<RecordBatchFileReaderImpl>();
+  return result->OpenAsync(file, footer_offset, options)
+      .Then([=]() -> Result<std::shared_ptr<RecordBatchFileReader>> { return result; });
+}
+
+Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
+    io::RandomAccessFile* file, int64_t footer_offset, const IpcReadOptions& options) {
+  auto result = std::make_shared<RecordBatchFileReaderImpl>();
+  return result->OpenAsync(file, footer_offset, options)
+      .Then([=]() -> Result<std::shared_ptr<RecordBatchFileReader>> { return result; });
+}
+
+Result<RecordBatchVector> RecordBatchFileReader::ToRecordBatches() {
+  RecordBatchVector batches;
+  const auto n = num_record_batches();
+  for (int i = 0; i < n; ++i) {
+    ARROW_ASSIGN_OR_RAISE(auto batch, ReadRecordBatch(i));
+    batches.emplace_back(std::move(batch));
+  }
+  return batches;
+}
+
+Result<std::shared_ptr<Table>> RecordBatchFileReader::ToTable() {
+  ARROW_ASSIGN_OR_RAISE(auto batches, ToRecordBatches());
+  return Table::FromRecordBatches(schema(), std::move(batches));
+}
+
 Future<SelectiveIpcFileRecordBatchGenerator::Item>
 SelectiveIpcFileRecordBatchGenerator::operator()() {
   int index = index_++;
@@ -1977,77 +2044,6 @@ Result<std::shared_ptr<RecordBatch>> WholeIpcFileRecordBatchGenerator::ReadRecor
       ReadRecordBatchInternal(*message->metadata(), state->schema_,
                               state->field_inclusion_mask_, context, reader.get()));
   return batch_with_metadata.batch;
-}
-
-}  // namespace
-
-Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
-    io::RandomAccessFile* file, const IpcReadOptions& options) {
-  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
-  return Open(file, footer_offset, options);
-}
-
-Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
-    io::RandomAccessFile* file, int64_t footer_offset, const IpcReadOptions& options) {
-  auto result = std::make_shared<RecordBatchFileReaderImpl>();
-  RETURN_NOT_OK(result->Open(file, footer_offset, options));
-  return result;
-}
-
-Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
-    const std::shared_ptr<io::RandomAccessFile>& file, const IpcReadOptions& options) {
-  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
-  return Open(file, footer_offset, options);
-}
-
-Result<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::Open(
-    const std::shared_ptr<io::RandomAccessFile>& file, int64_t footer_offset,
-    const IpcReadOptions& options) {
-  auto result = std::make_shared<RecordBatchFileReaderImpl>();
-  RETURN_NOT_OK(result->Open(file, footer_offset, options));
-  return result;
-}
-
-Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
-    const std::shared_ptr<io::RandomAccessFile>& file, const IpcReadOptions& options) {
-  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
-  return OpenAsync(file, footer_offset, options);
-}
-
-Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
-    io::RandomAccessFile* file, const IpcReadOptions& options) {
-  ARROW_ASSIGN_OR_RAISE(int64_t footer_offset, file->GetSize());
-  return OpenAsync(file, footer_offset, options);
-}
-
-Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
-    const std::shared_ptr<io::RandomAccessFile>& file, int64_t footer_offset,
-    const IpcReadOptions& options) {
-  auto result = std::make_shared<RecordBatchFileReaderImpl>();
-  return result->OpenAsync(file, footer_offset, options)
-      .Then([=]() -> Result<std::shared_ptr<RecordBatchFileReader>> { return result; });
-}
-
-Future<std::shared_ptr<RecordBatchFileReader>> RecordBatchFileReader::OpenAsync(
-    io::RandomAccessFile* file, int64_t footer_offset, const IpcReadOptions& options) {
-  auto result = std::make_shared<RecordBatchFileReaderImpl>();
-  return result->OpenAsync(file, footer_offset, options)
-      .Then([=]() -> Result<std::shared_ptr<RecordBatchFileReader>> { return result; });
-}
-
-Result<RecordBatchVector> RecordBatchFileReader::ToRecordBatches() {
-  RecordBatchVector batches;
-  const auto n = num_record_batches();
-  for (int i = 0; i < n; ++i) {
-    ARROW_ASSIGN_OR_RAISE(auto batch, ReadRecordBatch(i));
-    batches.emplace_back(std::move(batch));
-  }
-  return batches;
-}
-
-Result<std::shared_ptr<Table>> RecordBatchFileReader::ToTable() {
-  ARROW_ASSIGN_OR_RAISE(auto batches, ToRecordBatches());
-  return Table::FromRecordBatches(schema(), std::move(batches));
 }
 
 Status Listener::OnEOS() { return Status::OK(); }
@@ -2534,8 +2530,6 @@ Result<std::shared_ptr<SparseTensor>> ReadSparseTensorPayload(const IpcPayload& 
 
 }  // namespace internal
 
-namespace {
-
 Result<std::shared_ptr<SparseTensor>> ReadSparseTensor(const Buffer& metadata,
                                                        io::RandomAccessFile* file) {
   std::shared_ptr<DataType> type;
@@ -2585,8 +2579,6 @@ Result<std::shared_ptr<SparseTensor>> ReadSparseTensor(const Buffer& metadata,
       return Status::Invalid("Unsupported sparse index format");
   }
 }
-
-}  // namespace
 
 Result<std::shared_ptr<SparseTensor>> ReadSparseTensor(const Message& message) {
   CHECK_HAS_BODY(message);

@@ -94,8 +94,6 @@ Result<EmitInfo> GetEmitInfo(const RelMessage& rel,
   return emit_info;
 }
 
-namespace {
-
 Result<DeclarationInfo> ProcessEmitProject(
     std::optional<substrait::RelCommon> rel_common_opt,
     const DeclarationInfo& project_declr, const std::shared_ptr<Schema>& input_schema) {
@@ -132,8 +130,6 @@ Result<DeclarationInfo> ProcessEmitProject(
   }
 }
 
-}  // namespace
-
 template <typename RelMessage>
 Result<DeclarationInfo> ProcessEmit(const RelMessage& rel,
                                     const DeclarationInfo& no_emit_declr,
@@ -157,7 +153,6 @@ Result<DeclarationInfo> ProcessEmit(const RelMessage& rel,
     return no_emit_declr;
   }
 }
-
 /// In the specialization, a single ProjectNode is being used to
 /// get the Acero relation with or without emit.
 template <>
@@ -167,8 +162,6 @@ Result<DeclarationInfo> ProcessEmit(const substrait::ProjectRel& rel,
   return ProcessEmitProject(rel.has_common() ? std::optional(rel.common()) : std::nullopt,
                             no_emit_declr, schema);
 }
-
-namespace {
 
 Result<DeclarationInfo> ProcessExtensionEmit(const DeclarationInfo& no_emit_declr,
                                              const std::vector<int>& emit_order) {
@@ -295,8 +288,6 @@ Status DiscoverFilesFromDir(const std::shared_ptr<fs::LocalFileSystem>& local_fs
 
   return Status::OK();
 }
-
-}  // namespace
 
 namespace internal {
 
@@ -1109,6 +1100,8 @@ Result<std::unique_ptr<substrait::FilterRel>> FilterRelationConverter(
   return filter_rel;
 }
 
+}  // namespace
+
 Status SerializeAndCombineRelations(const acero::Declaration& declaration,
                                     ExtensionSet* ext_set,
                                     std::unique_ptr<substrait::Rel>* rel,
@@ -1147,8 +1140,6 @@ Status SerializeAndCombineRelations(const acero::Declaration& declaration,
 
   return Status::OK();
 }
-
-}  // namespace
 
 Result<std::unique_ptr<substrait::Rel>> ToProto(
     const acero::Declaration& declr, ExtensionSet* ext_set,

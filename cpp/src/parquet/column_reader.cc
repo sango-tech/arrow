@@ -226,7 +226,8 @@ class SerializedPageReader : public PageReader {
         decompression_buffer_(AllocateBuffer(properties_.memory_pool(), 0)),
         page_ordinal_(0),
         seen_num_values_(0),
-        total_num_values_(total_num_values) {
+        total_num_values_(total_num_values),
+        decryption_buffer_(AllocateBuffer(properties_.memory_pool(), 0)) {
     if (crypto_ctx != nullptr) {
       crypto_ctx_ = *crypto_ctx;
       InitDecryption();
@@ -240,7 +241,7 @@ class SerializedPageReader : public PageReader {
   //
   // The returned Page contains references that aren't guaranteed to live
   // beyond the next call to NextPage(). SerializedPageReader reuses the
-  // decompression buffer internally, so if NextPage() is
+  // decryption and decompression buffers internally, so if NextPage() is
   // called then the content of previous page might be invalidated.
   std::shared_ptr<Page> NextPage() override;
 
@@ -303,6 +304,8 @@ class SerializedPageReader : public PageReader {
   // updated by only the page ordinal.
   std::string data_page_aad_;
   std::string data_page_header_aad_;
+  // Encryption
+  std::shared_ptr<ResizableBuffer> decryption_buffer_;
 };
 
 void SerializedPageReader::InitDecryption() {
@@ -474,12 +477,14 @@ std::shared_ptr<Page> SerializedPageReader::NextPage() {
 
     // Decrypt it if we need to
     if (data_decryptor_ != nullptr) {
-      auto decryption_buffer = AllocateBuffer(
-          properties_.memory_pool(), data_decryptor_->PlaintextLength(compressed_len));
-      compressed_len = data_decryptor_->Decrypt(
-          page_buffer->span_as<uint8_t>(), decryption_buffer->mutable_span_as<uint8_t>());
+      PARQUET_THROW_NOT_OK(
+          decryption_buffer_->Resize(data_decryptor_->PlaintextLength(compressed_len),
+                                     /*shrink_to_fit=*/false));
+      compressed_len =
+          data_decryptor_->Decrypt(page_buffer->span_as<uint8_t>(),
+                                   decryption_buffer_->mutable_span_as<uint8_t>());
 
-      page_buffer = decryption_buffer;
+      page_buffer = decryption_buffer_;
     }
 
     if (page_type == PageType::DICTIONARY_PAGE) {
@@ -1679,7 +1684,7 @@ class TypedRecordReader : public TypedColumnReaderImpl<DType>,
     }
   }
 
-  virtual void ReserveValues(int64_t extra_values) {
+  void ReserveValues(int64_t extra_values) {
     const int64_t new_values_capacity =
         UpdateCapacity(values_capacity_, values_written_, extra_values);
     if (new_values_capacity > values_capacity_) {
@@ -1963,12 +1968,6 @@ class FLBARecordReader final : public TypedRecordReader<FLBAType>,
     return ::arrow::ArrayVector{std::move(chunk)};
   }
 
-  void ReserveValues(int64_t extra_values) override {
-    ARROW_DCHECK(!uses_values_);
-    TypedRecordReader::ReserveValues(extra_values);
-    PARQUET_THROW_NOT_OK(array_builder_.Reserve(extra_values));
-  }
-
   void ReadValuesDense(int64_t values_to_read) override {
     int64_t num_decoded = this->current_decoder_->DecodeArrowNonNull(
         static_cast<int>(values_to_read), &array_builder_);
@@ -2041,12 +2040,6 @@ class ByteArrayChunkedRecordReader final : public TypedRecordReader<ByteArrayTyp
     }
     accumulator_.chunks = {};
     return result;
-  }
-
-  void ReserveValues(int64_t extra_values) override {
-    ARROW_DCHECK(!uses_values_);
-    TypedRecordReader::ReserveValues(extra_values);
-    PARQUET_THROW_NOT_OK(accumulator_.builder->Reserve(extra_values));
   }
 
   void ReadValuesDense(int64_t values_to_read) override {

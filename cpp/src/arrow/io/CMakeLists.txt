@@ -28,7 +28,9 @@ if(ARROW_HDFS)
                  PREFIX
                  "arrow-io"
                  EXTRA_LINK_LIBS
-                 arrow::hadoop)
+                 arrow::hadoop
+                 Boost::filesystem
+                 Boost::system)
 endif()
 
 add_arrow_test(memory_test PREFIX "arrow-io")

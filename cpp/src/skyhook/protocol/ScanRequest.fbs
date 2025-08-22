@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#pragma once
+namespace org.apache.arrow.flatbuf;
 
-#include <cstdint>
+table ScanRequest {
+  file_size: long;
+  file_format: short;
+  filter: [ubyte];
+  partition: [ubyte];
+  dataset_schema: [ubyte];
+  projection_schema: [ubyte];
+}
 
-#include "parquet/level_comparison.h"
-
-namespace parquet::internal {
-
-MinMax FindMinMaxAvx2(const int16_t* levels, int64_t num_levels);
-uint64_t GreaterThanBitmapAvx2(const int16_t* levels, int64_t num_levels, int16_t rhs);
-
-}  // namespace parquet::internal
+root_type ScanRequest;

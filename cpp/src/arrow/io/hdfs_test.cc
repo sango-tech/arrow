@@ -19,7 +19,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <sstream>  // IWYU pragma: keep
@@ -36,6 +35,11 @@
 #include "arrow/status.h"
 #include "arrow/testing/gtest_util.h"
 #include "arrow/testing/util.h"
+
+// boost/filesystem.hpp should be included after
+// arrow/util/windows_compatibility.h because boost/filesystem.hpp
+// includes windows.h implicitly.
+#include <boost/filesystem.hpp>  // NOLINT
 
 namespace arrow {
 namespace io {
@@ -86,12 +90,9 @@ class TestHadoopFileSystem : public ::testing::Test {
 
     client_ = nullptr;
     scratch_dir_ =
-        (std::filesystem::temp_directory_path() / "arrow-hdfs/scratch-").string();
-    int random_size = 4;
-    scratch_dir_.resize(scratch_dir_.size() + random_size, '%');
-    random_alnum(
-        random_size, 0,
-        reinterpret_cast<uint8_t*>(&scratch_dir_[scratch_dir_.size() - random_size]));
+        boost::filesystem::unique_path(boost::filesystem::temp_directory_path() /
+                                       "arrow-hdfs/scratch-%%%%")
+            .string();
 
     loaded_driver_ = false;
 

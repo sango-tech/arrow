@@ -48,8 +48,6 @@
 namespace arrow {
 namespace engine {
 
-namespace {
-
 Status ParseFromBufferImpl(const Buffer& buf, const std::string& full_name,
                            google::protobuf::Message* message) {
   google::protobuf::io::ArrayInputStream buf_stream{buf.data(),
@@ -60,8 +58,6 @@ Status ParseFromBufferImpl(const Buffer& buf, const std::string& full_name,
   }
   return Status::Invalid("ParseFromZeroCopyStream failed for ", full_name);
 }
-
-}  // namespace
 
 template <typename Message>
 Result<Message> ParseFromBuffer(const Buffer& buf) {

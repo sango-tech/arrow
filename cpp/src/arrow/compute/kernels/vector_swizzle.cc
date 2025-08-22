@@ -19,7 +19,6 @@
 #include "arrow/compute/function.h"
 #include "arrow/compute/kernels/codegen_internal.h"
 #include "arrow/compute/registry.h"
-#include "arrow/compute/registry_internal.h"
 #include "arrow/util/checked_cast.h"
 #include "arrow/util/logging_internal.h"
 

@@ -37,9 +37,7 @@ bool Span::valid() const {
   return static_cast<::arrow::internal::tracing::SpanImpl*>(details.get())->valid();
 }
 
-void Span::reset() {
-  static_cast<::arrow::internal::tracing::SpanImpl*>(details.get())->reset();
-}
+void Span::reset() { details.reset(); }
 
 #else
 

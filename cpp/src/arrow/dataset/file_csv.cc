@@ -53,10 +53,6 @@ using internal::SerialExecutor;
 
 namespace dataset {
 
-namespace {
-
-using RecordBatchGenerator = std::function<Future<std::shared_ptr<RecordBatch>>()>;
-
 struct CsvInspectedFragment : public InspectedFragment {
   CsvInspectedFragment(std::vector<std::string> column_names,
                        std::shared_ptr<io::InputStream> input_stream, int64_t num_bytes)
@@ -145,6 +141,8 @@ class CsvFileScanner : public FragmentScanner {
 
   int scanned_so_far_ = 0;
 };
+
+using RecordBatchGenerator = std::function<Future<std::shared_ptr<RecordBatch>>()>;
 
 Result<std::vector<std::string>> GetOrderedColumnNames(
     const csv::ReadOptions& read_options, const csv::ParseOptions& parse_options,
@@ -350,8 +348,6 @@ static RecordBatchGenerator GeneratorFromReader(
   return MakeFromFuture(std::move(gen_fut));
 }
 
-}  // namespace
-
 CsvFileFormat::CsvFileFormat() : FileFormat(std::make_shared<CsvFragmentScanOptions>()) {}
 
 bool CsvFileFormat::Equals(const FileFormat& format) const {
@@ -424,8 +420,6 @@ Future<std::shared_ptr<FragmentScanner>> CsvFileFormat::BeginScan(
                               exec_context->executor());
 }
 
-namespace {
-
 Result<std::shared_ptr<InspectedFragment>> DoInspectFragment(
     const FileSource& source, const CsvFragmentScanOptions& csv_options,
     compute::ExecContext* exec_context) {
@@ -447,8 +441,6 @@ Result<std::shared_ptr<InspectedFragment>> DoInspectFragment(
   return std::make_shared<CsvInspectedFragment>(std::move(column_names), std::move(input),
                                                 source.Size());
 }
-
-}  // namespace
 
 Future<std::shared_ptr<InspectedFragment>> CsvFileFormat::InspectFragment(
     const FileSource& source, const FragmentScanOptions* format_options,

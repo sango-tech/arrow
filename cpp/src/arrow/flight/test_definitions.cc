@@ -1194,8 +1194,6 @@ void IpcOptionsTest::TestDoExchangeServerWriteOptions() {
 
 #if defined(ARROW_CUDA)
 
-namespace {
-
 Status CheckBuffersOnDevice(const Array& array, const Device& device) {
   if (array.num_fields() != 0) {
     return Status::NotImplemented("Nested arrays");
@@ -1285,8 +1283,6 @@ class CudaTestServer : public FlightServerBase {
   std::shared_ptr<Device> device_;
   std::shared_ptr<cuda::CudaContext> context_;
 };
-
-}  // namespace
 
 // Store CUDA objects without exposing them in the public header
 class CudaDataTest::Impl {
@@ -1754,7 +1750,7 @@ void ErrorHandlingTest::TestGetFlightInfoMetadata() {
                             }));
 }
 
-static void CheckErrorDetail(const Status& status) {
+void CheckErrorDetail(const Status& status) {
   auto detail = FlightStatusDetail::UnwrapStatus(status);
   ASSERT_NE(detail, nullptr) << status.ToString();
   ASSERT_EQ(detail->code(), FlightStatusCode::Unauthorized);

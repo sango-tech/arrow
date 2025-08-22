@@ -183,6 +183,14 @@ Status MakeListArray(const std::shared_ptr<Array>& child_array, int num_lists,
   return (**out).Validate();
 }
 
+}  // namespace
+
+Status MakeRandomListArray(const std::shared_ptr<Array>& child_array, int num_lists,
+                           bool include_nulls, MemoryPool* pool,
+                           std::shared_ptr<Array>* out) {
+  return MakeListArray<ListType>(child_array, num_lists, include_nulls, pool, out);
+}
+
 Status MakeRandomListViewArray(const std::shared_ptr<Array>& child_array, int num_lists,
                                bool include_nulls, MemoryPool* pool,
                                std::shared_ptr<Array>* out) {
@@ -209,6 +217,12 @@ Status MakeRandomLargeListViewArray(const std::shared_ptr<Array>& child_array,
   return Status::OK();
 }
 
+Status MakeRandomLargeListArray(const std::shared_ptr<Array>& child_array, int num_lists,
+                                bool include_nulls, MemoryPool* pool,
+                                std::shared_ptr<Array>* out) {
+  return MakeListArray<LargeListType>(child_array, num_lists, include_nulls, pool, out);
+}
+
 Status MakeRandomMapArray(const std::shared_ptr<Array>& key_array,
                           const std::shared_ptr<Array>& item_array, int num_maps,
                           bool include_nulls, MemoryPool* pool,
@@ -224,20 +238,6 @@ Status MakeRandomMapArray(const std::shared_ptr<Array>& key_array,
   map_data->type = map(key_array->type(), item_array->type());
   out->reset(new MapArray(map_data));
   return (**out).Validate();
-}
-
-}  // namespace
-
-Status MakeRandomListArray(const std::shared_ptr<Array>& child_array, int num_lists,
-                           bool include_nulls, MemoryPool* pool,
-                           std::shared_ptr<Array>* out) {
-  return MakeListArray<ListType>(child_array, num_lists, include_nulls, pool, out);
-}
-
-Status MakeRandomLargeListArray(const std::shared_ptr<Array>& child_array, int num_lists,
-                                bool include_nulls, MemoryPool* pool,
-                                std::shared_ptr<Array>* out) {
-  return MakeListArray<LargeListType>(child_array, num_lists, include_nulls, pool, out);
 }
 
 Status MakeRandomBooleanArray(const int length, bool include_nulls,
@@ -614,8 +614,6 @@ Status MakeStruct(std::shared_ptr<RecordBatch>* out) {
   return Status::OK();
 }
 
-namespace {
-
 Status AddArtificialOffsetInChildArray(ArrayData* array, int64_t offset) {
   auto& child = array->child_data[1];
   auto builder = MakeBuilder(child->type).ValueOrDie();
@@ -624,8 +622,6 @@ Status AddArtificialOffsetInChildArray(ArrayData* array, int64_t offset) {
   array->child_data[1] = builder->Finish().ValueOrDie()->Slice(offset)->data();
   return Status::OK();
 }
-
-}  // namespace
 
 Status MakeRunEndEncoded(std::shared_ptr<RecordBatch>* out) {
   const int64_t logical_length = 10000;

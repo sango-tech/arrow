@@ -348,28 +348,7 @@ class ARROW_EXPORT OutputType {
   Resolver resolver_ = NULLPTR;
 };
 
-/// \brief Additional constraints to apply to the input types of a kernel when matching a
-/// specific kernel signature.
-class ARROW_EXPORT MatchConstraint {
- public:
-  virtual ~MatchConstraint() = default;
-
-  /// \brief Return true if the input types satisfy the constraint.
-  virtual bool Matches(const std::vector<TypeHolder>& types) const = 0;
-};
-
-/// \brief Convenience function to create a MatchConstraint from a match function.
-ARROW_EXPORT std::shared_ptr<MatchConstraint> MakeConstraint(
-    std::function<bool(const std::vector<TypeHolder>&)> matches);
-
-/// \brief Constraint that all input types are decimal types and have the same scale.
-ARROW_EXPORT std::shared_ptr<MatchConstraint> DecimalsHaveSameScale();
-
-/// \brief Constraint that all binary input types are decimal types and the first type's
-/// scale >= the second type's.
-ARROW_EXPORT std::shared_ptr<MatchConstraint> BinaryDecimalScale1GeScale2();
-
-/// \brief Holds the input types, optional match constraint and output type of the kernel.
+/// \brief Holds the input types and output type of the kernel.
 ///
 /// VarArgs functions with minimum N arguments should pass up to N input types to be
 /// used to validate the input types of a function invocation. The first N-1 types
@@ -378,16 +357,15 @@ ARROW_EXPORT std::shared_ptr<MatchConstraint> BinaryDecimalScale1GeScale2();
 class ARROW_EXPORT KernelSignature {
  public:
   KernelSignature(std::vector<InputType> in_types, OutputType out_type,
-                  bool is_varargs = false,
-                  std::shared_ptr<MatchConstraint> constraint = NULLPTR);
+                  bool is_varargs = false);
 
   /// \brief Convenience ctor since make_shared can be awkward
-  static std::shared_ptr<KernelSignature> Make(
-      std::vector<InputType> in_types, OutputType out_type, bool is_varargs = false,
-      std::shared_ptr<MatchConstraint> constraint = NULLPTR);
+  static std::shared_ptr<KernelSignature> Make(std::vector<InputType> in_types,
+                                               OutputType out_type,
+                                               bool is_varargs = false);
 
-  /// \brief Return true if the signature is compatible with the list of input
-  /// value descriptors and satisfies the match constraint, if any.
+  /// \brief Return true if the signature if compatible with the list of input
+  /// value descriptors.
   bool MatchesInputs(const std::vector<TypeHolder>& types) const;
 
   /// \brief Returns true if the input types of each signature are
@@ -423,7 +401,6 @@ class ARROW_EXPORT KernelSignature {
   std::vector<InputType> in_types_;
   OutputType out_type_;
   bool is_varargs_;
-  std::shared_ptr<MatchConstraint> constraint_;
 
   // For caching the hash code after it's computed the first time
   mutable uint64_t hash_code_;

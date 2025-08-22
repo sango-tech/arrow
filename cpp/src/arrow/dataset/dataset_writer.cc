@@ -53,7 +53,7 @@ class Throttle {
 
   bool Unthrottled() const { return max_value_ <= 0; }
 
-  std::optional<Future<>> Acquire(uint64_t values) {
+  Future<> Acquire(uint64_t values) {
     if (Unthrottled()) {
       return Future<>::MakeFinished();
     }
@@ -61,11 +61,10 @@ class Throttle {
     if (current_value_ >= max_value_) {
       in_waiting_ = values;
       backpressure_ = Future<>::Make();
-      return backpressure_;
+    } else {
+      current_value_ += values;
     }
-    current_value_ += values;
-    DCHECK(backpressure_.is_finished());
-    return std::nullopt;
+    return backpressure_;
   }
 
   void Release(uint64_t values) {
@@ -663,7 +662,7 @@ class DatasetWriter::DatasetWriterImpl {
                                                        directory, prefix);
             }));
     std::shared_ptr<DatasetWriterDirectoryQueue> dir_queue = dir_queue_itr->second;
-    std::optional<Future<>> backpressure;
+    Future<> backpressure;
     while (batch) {
       // Keep opening new files until batch is done.
       std::shared_ptr<RecordBatch> remainder;
@@ -682,13 +681,13 @@ class DatasetWriter::DatasetWriterImpl {
       }
       backpressure =
           writer_state_->rows_in_flight_throttle.Acquire(next_chunk->num_rows());
-      if (backpressure) {
+      if (!backpressure.is_finished()) {
         EVENT_ON_CURRENT_SPAN("DatasetWriter::Backpressure::TooManyRowsQueued");
         break;
       }
       if (will_open_file) {
         backpressure = writer_state_->open_files_throttle.Acquire(1);
-        if (backpressure) {
+        if (!backpressure.is_finished()) {
           EVENT_ON_CURRENT_SPAN("DatasetWriter::Backpressure::TooManyOpenFiles");
           writer_state_->rows_in_flight_throttle.Release(next_chunk->num_rows());
           RETURN_NOT_OK(TryCloseLargestFile());
@@ -712,8 +711,7 @@ class DatasetWriter::DatasetWriterImpl {
     }
 
     if (batch) {
-      DCHECK(backpressure);
-      return backpressure->Then([this, batch, directory, prefix] {
+      return backpressure.Then([this, batch, directory, prefix] {
         return DoWriteRecordBatch(batch, directory, prefix);
       });
     }

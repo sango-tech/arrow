@@ -32,7 +32,6 @@
 #include "arrow/compute/kernels/common_internal.h"
 #include "arrow/compute/kernels/hash_aggregate_internal.h"
 #include "arrow/compute/kernels/util_internal.h"
-#include "arrow/compute/registry_internal.h"
 #include "arrow/compute/row/grouper.h"
 #include "arrow/compute/row/row_encoder_internal.h"
 #include "arrow/record_batch.h"

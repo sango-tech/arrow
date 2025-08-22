@@ -48,8 +48,7 @@ add_custom_command(OUTPUT ${FLIGHT_SQL_GENERATED_PROTO_FILES}
                    COMMAND ${FLIGHT_SQL_PROTOC_COMMAND}
                    DEPENDS ${PROTO_DEPENDS})
 
-arrow_set_generated_proto_files_properties(${FLIGHT_SQL_GENERATED_PROTO_FILES})
-
+set_source_files_properties(${FLIGHT_SQL_GENERATED_PROTO_FILES} PROPERTIES GENERATED TRUE)
 add_custom_target(flight_sql_protobuf_gen ALL DEPENDS ${FLIGHT_SQL_GENERATED_PROTO_FILES})
 
 set(ARROW_FLIGHT_SQL_SRCS

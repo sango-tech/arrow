@@ -28,7 +28,6 @@
 #include "arrow/compute/kernels/common_internal.h"
 #include "arrow/compute/kernels/util_internal.h"
 #include "arrow/compute/kernels/vector_sort_internal.h"
-#include "arrow/compute/registry_internal.h"
 #include "arrow/type_traits.h"
 #include "arrow/util/bit_block_counter.h"
 #include "arrow/util/bitmap.h"

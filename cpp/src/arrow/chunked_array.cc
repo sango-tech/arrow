@@ -100,31 +100,24 @@ DeviceAllocationTypeSet ChunkedArray::device_types() const {
 }
 namespace {
 
-// Check whether the type or any of its children is a float type.
-bool ContainsFloatType(const DataType& type) {
-  if (is_floating(type.id())) {
-    return true;
+bool mayHaveNaN(const arrow::DataType& type) {
+  if (type.num_fields() == 0) {
+    return is_floating(type.id());
   } else {
-    // Check if any nested field contains a float type.
     for (const auto& field : type.fields()) {
-      if (ContainsFloatType(*field->type())) {
+      if (mayHaveNaN(*field->type())) {
         return true;
       }
     }
   }
-  // No float types are observed
   return false;
 }
 
 }  //  namespace
 
 bool ChunkedArray::Equals(const ChunkedArray& other, const EqualOptions& opts) const {
-  if (this == &other) {
-    if (opts.nans_equal()) {
-      return true;
-    } else if (!ContainsFloatType(*type_)) {
-      return true;
-    }
+  if (this == &other && !mayHaveNaN(*type_)) {
+    return true;
   }
   if (length_ != other.length()) {
     return false;

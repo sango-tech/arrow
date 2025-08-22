@@ -157,8 +157,6 @@ Status MakeSparseCSXMatrixFromTensor(SparseMatrixCompressedAxis axis,
   return Status::OK();
 }
 
-namespace {
-
 Result<std::shared_ptr<Tensor>> MakeTensorFromSparseCSXMatrix(
     SparseMatrixCompressedAxis axis, MemoryPool* pool,
     const std::shared_ptr<Tensor>& indptr, const std::shared_ptr<Tensor>& indices,
@@ -212,8 +210,6 @@ Result<std::shared_ptr<Tensor>> MakeTensorFromSparseCSXMatrix(
   return std::make_shared<Tensor>(value_type, std::move(values_buffer), shape, strides,
                                   dim_names);
 }
-
-}  // namespace
 
 Result<std::shared_ptr<Tensor>> MakeTensorFromSparseCSRMatrix(
     MemoryPool* pool, const SparseCSRMatrix* sparse_tensor) {

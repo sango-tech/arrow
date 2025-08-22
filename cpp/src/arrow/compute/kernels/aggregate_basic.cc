@@ -21,7 +21,6 @@
 #include "arrow/compute/kernels/codegen_internal.h"
 #include "arrow/compute/kernels/common_internal.h"
 #include "arrow/compute/kernels/util_internal.h"
-#include "arrow/compute/registry_internal.h"
 #include "arrow/util/cpu_info.h"
 #include "arrow/util/hashing.h"
 
@@ -853,8 +852,6 @@ void AddBasicAggKernels(KernelInit init,
   }
 }
 
-namespace {
-
 void AddScalarAggKernels(KernelInit init,
                          const std::vector<std::shared_ptr<DataType>>& types,
                          std::shared_ptr<DataType> out_ty,
@@ -874,11 +871,15 @@ void AddArrayScalarAggKernels(KernelInit init,
   AddScalarAggKernels(init, types, out_ty, func);
 }
 
+namespace {
+
 Result<TypeHolder> MinMaxType(KernelContext*, const std::vector<TypeHolder>& types) {
   // T -> struct<min: T, max: T>
   auto ty = types.front().GetSharedPtr();
   return struct_({field("min", ty), field("max", ty)});
 }
+
+}  // namespace
 
 Result<TypeHolder> FirstLastType(KernelContext*, const std::vector<TypeHolder>& types) {
   auto ty = types.front().GetSharedPtr();
@@ -898,8 +899,6 @@ void AddFirstLastKernels(KernelInit init,
     AddFirstLastKernel(init, ty, func, SimdLevel::NONE);
   }
 }
-
-}  // namespace
 
 void AddMinMaxKernel(KernelInit init, internal::detail::GetTypeId get_id,
                      ScalarAggregateFunction* func, SimdLevel::type simd_level) {

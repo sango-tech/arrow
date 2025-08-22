@@ -20,7 +20,6 @@
 #include "arrow/compute/kernels/common_internal.h"
 #include "arrow/compute/kernels/copy_data_internal.h"
 #include "arrow/compute/kernels/util_internal.h"
-#include "arrow/compute/registry_internal.h"
 #include "arrow/util/bitmap_ops.h"
 #include "arrow/util/logging_internal.h"
 
@@ -801,6 +800,8 @@ struct FillNullBackwardChunked {
   }
 };
 
+}  // namespace
+
 void AddKernel(Type::type type_id, std::shared_ptr<KernelSignature> signature,
                ArrayKernelExec exec, VectorKernel::ChunkedExec exec_chunked,
                FunctionRegistry* registry, VectorFunction* func) {
@@ -867,8 +868,6 @@ void RegisterVectorFunction(FunctionRegistry* registry,
 
   // TODO(ARROW-9431): "replace_with_indices"
 }
-
-}  // namespace
 
 const FunctionDoc replace_with_mask_doc(
     "Replace items selected with a mask",

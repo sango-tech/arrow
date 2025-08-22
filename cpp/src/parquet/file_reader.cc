@@ -165,8 +165,6 @@ std::unique_ptr<PageReader> RowGroupReader::GetColumnPageReader(int i) {
 // Returns the rowgroup metadata
 const RowGroupMetaData* RowGroupReader::metadata() const { return contents_->metadata(); }
 
-namespace {
-
 /// Compute the section of the file that should be read for the given
 /// row group and column chunk.
 ::arrow::io::ReadRange ComputeColumnChunkRange(FileMetaData* file_metadata,
@@ -207,8 +205,6 @@ namespace {
 
   return {col_start, col_length};
 }
-
-}  // namespace
 
 // RowGroupReader::Contents implementation for the Parquet file specification
 class SerializedRowGroup : public RowGroupReader::Contents {
@@ -309,6 +305,13 @@ class SerializedFile : public ParquetFileReader::Contents {
                  const ReaderProperties& props = default_reader_properties())
       : source_(std::move(source)), properties_(props) {
     PARQUET_ASSIGN_OR_THROW(source_size_, source_->GetSize());
+  }
+
+  ~SerializedFile() override {
+    try {
+      Close();
+    } catch (...) {
+    }
   }
 
   void Close() override {}

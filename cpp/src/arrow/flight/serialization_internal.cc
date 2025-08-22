@@ -457,8 +457,6 @@ Status ToPayload(const FlightDescriptor& descr, std::shared_ptr<Buffer>* out) {
   return Status::OK();
 }
 
-namespace {
-
 // SessionOptionValue
 
 Status FromProto(const pb::SessionOptionValue& pb_val, SessionOptionValue* val) {
@@ -525,8 +523,6 @@ Status ToProto(const std::map<std::string, SessionOptionValue>& map,
   }
   return Status::OK();
 }
-
-}  // namespace
 
 // SetSessionOptionsRequest
 

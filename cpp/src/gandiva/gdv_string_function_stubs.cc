@@ -35,8 +35,6 @@
 
 extern "C" {
 
-ARROW_SUPPRESS_MISSING_DECLARATIONS_WARNING
-
 bool gdv_fn_like_utf8_utf8(int64_t ptr, const char* data, int data_len,
                            const char* pattern, int pattern_len) {
   gandiva::LikeHolder* holder = reinterpret_cast<gandiva::LikeHolder*>(ptr);
@@ -757,8 +755,6 @@ const char* translate_utf8_utf8_utf8(int64_t context, const char* in, int32_t in
   *out_len = result_len;
   return result;
 }
-
-ARROW_UNSUPPRESS_MISSING_DECLARATIONS_WARNING
 }
 
 namespace gandiva {
